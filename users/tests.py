@@ -33,7 +33,7 @@ class AuthenticationEndpointTests(APITestCase):
         self.assertTrue(user.data["username"])
         self.assertEqual(profile.status_code, status.HTTP_200_OK)
         self.assertEqual(profile.data["personality_tags"], [])
-        self.assertEqual(profile.data["current_interests"], [])
+        self.assertEqual(profile.data["interests"], [])
 
     def test_login_accepts_email_and_password(self):
         get_user_model().objects.create_user(
@@ -173,8 +173,8 @@ class UserProfileTests(APITestCase):
     def test_user_creation_creates_empty_profile(self):
         profile = self.user.profile
         self.assertEqual(profile.time_zone, "UTC")
-        self.assertEqual(profile.personality_tags, [])
-        self.assertEqual(profile.current_interests, [])
+        self.assertEqual(profile.personality_tags.count(), 0)
+        self.assertEqual(profile.interests.count(), 0)
 
     def test_unauthenticated_profile_access_is_rejected(self):
         self.client.credentials()
@@ -182,6 +182,10 @@ class UserProfileTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_authenticated_user_can_retrieve_and_update_own_profile(self):
+        from users.models import Interest, PersonalityTag
+
+        interest = Interest.objects.create(key="productivity", name="Productivity")
+        tag = PersonalityTag.objects.create(key="focused", name="Focused")
         url = reverse("user-profile")
         response = self.client.patch(
             url,
@@ -189,8 +193,8 @@ class UserProfileTests(APITestCase):
                 "display_name": "Rishab",
                 "time_zone": "America/Toronto",
                 "bio": "Building MyTabBoard",
-                "personality_tags": ["focused", "curious"],
-                "current_interests": ["productivity"],
+                "personality_tags": [tag.pk],
+                "interests": [interest.pk],
             },
             format="json",
         )
@@ -226,23 +230,20 @@ class UserProfileTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("time_zone", response.data)
 
-    def test_more_than_ten_personality_tags_is_rejected(self):
-        response = self.client.patch(
-            reverse("user-profile"),
-            {"personality_tags": [f"tag-{index}" for index in range(11)]},
-            format="json",
-        )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("personality_tags", response.data)
+    def test_profile_interests_have_no_arbitrary_selection_limit(self):
+        from users.models import Interest
 
-    def test_more_than_ten_current_interests_is_rejected(self):
+        interests = [
+            Interest.objects.create(key=f"interest-{index}", name=f"Interest {index}")
+            for index in range(11)
+        ]
         response = self.client.patch(
             reverse("user-profile"),
-            {"current_interests": [f"interest-{index}" for index in range(11)]},
+            {"interests": [interest.pk for interest in interests]},
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("current_interests", response.data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(self.user.profile.interests.count(), 11)
 
 
 class UserProfileSerializerValidationTests(SimpleTestCase):
@@ -254,12 +255,3 @@ class UserProfileSerializerValidationTests(SimpleTestCase):
         serializer = UserProfileSerializer(data={"time_zone": "Not/A_Real_Zone"})
         self.assertFalse(serializer.is_valid())
         self.assertIn("time_zone", serializer.errors)
-
-    def test_more_than_ten_items_is_rejected_for_both_arrays(self):
-        for field in ("personality_tags", "current_interests"):
-            with self.subTest(field=field):
-                serializer = UserProfileSerializer(
-                    data={field: [f"item-{index}" for index in range(11)]}
-                )
-                self.assertFalse(serializer.is_valid())
-                self.assertIn(field, serializer.errors)

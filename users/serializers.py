@@ -1,8 +1,17 @@
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from rest_framework import serializers
+from users.models import Interest, PersonalityTag, UserProfile
 
-from users.models import UserProfile
+
+def validate_iana_time_zone(value):
+    try:
+        ZoneInfo(value)
+    except (ZoneInfoNotFoundError, ValueError, TypeError) as error:
+        raise serializers.ValidationError(
+            "Enter a valid IANA time zone identifier."
+        ) from error
+    return value
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -14,32 +23,23 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "display_name",
             "time_zone",
             "bio",
+            "interests",
             "personality_tags",
-            "current_interests",
             "created_at",
             "updated_at",
         )
         read_only_fields = ("id", "user", "created_at", "updated_at")
 
+    interests = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Interest.objects.filter(is_active=True),
+        required=False,
+    )
+    personality_tags = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=PersonalityTag.objects.filter(is_active=True),
+        required=False,
+    )
+
     def validate_time_zone(self, value):
-        try:
-            ZoneInfo(value)
-        except (ZoneInfoNotFoundError, ValueError, TypeError) as error:
-            raise serializers.ValidationError(
-                "Enter a valid IANA time zone identifier."
-            ) from error
-        return value
-
-    def validate_personality_tags(self, value):
-        if len(value) > 10:
-            raise serializers.ValidationError(
-                "A maximum of 10 personality tags is allowed."
-            )
-        return value
-
-    def validate_current_interests(self, value):
-        if len(value) > 10:
-            raise serializers.ValidationError(
-                "A maximum of 10 current interests is allowed."
-            )
-        return value
+        return validate_iana_time_zone(value)

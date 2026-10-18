@@ -1,0 +1,502 @@
+[
+  {
+    "model": "onboarding.onboardingquestion",
+    "pk": 1,
+    "fields": {
+      "key": "top_goals",
+      "text": "What are your top goals?",
+      "selection_type": "multiple",
+      "max_selections": 3,
+      "is_required": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 1,
+    "fields": {
+      "question": 1,
+      "key": "career_growth",
+      "label": "Career growth",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 2,
+    "fields": {
+      "question": 1,
+      "key": "fitness_health",
+      "label": "Fitness & health",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 3,
+    "fields": {
+      "question": 1,
+      "key": "learning_new_skills",
+      "label": "Learning new skills",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 4,
+    "fields": {
+      "question": 1,
+      "key": "building_side_project",
+      "label": "Building a side project",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 5,
+    "fields": {
+      "question": 1,
+      "key": "personal_life",
+      "label": "Personal life",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 6,
+    "fields": {
+      "question": 1,
+      "key": "financial_goals",
+      "label": "Financial goals",
+      "is_active": true
+    }
+  },
+
+  {
+    "model": "onboarding.onboardingquestion",
+    "pk": 2,
+    "fields": {
+      "key": "typical_day",
+      "text": "What does your typical day look like?",
+      "selection_type": "single",
+      "max_selections": 1,
+      "is_required": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 7,
+    "fields": {
+      "question": 2,
+      "key": "fixed_work_schedule",
+      "label": "Fixed work schedule",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 8,
+    "fields": {
+      "question": 2,
+      "key": "flexible_work_schedule",
+      "label": "Flexible work schedule",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 9,
+    "fields": {
+      "question": 2,
+      "key": "study_focused",
+      "label": "Study-focused",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 10,
+    "fields": {
+      "question": 2,
+      "key": "work_personal_balance",
+      "label": "Managing work and personal life",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 11,
+    "fields": {
+      "question": 2,
+      "key": "irregular_schedule",
+      "label": "Irregular schedule",
+      "is_active": true
+    }
+  },
+
+  {
+    "model": "onboarding.onboardingquestion",
+    "pk": 3,
+    "fields": {
+      "key": "productivity_challenge",
+      "text": "What is your biggest productivity challenge?",
+      "selection_type": "single",
+      "max_selections": 1,
+      "is_required": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 12,
+    "fields": {
+      "question": 3,
+      "key": "getting_started",
+      "label": "Getting started",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 13,
+    "fields": {
+      "question": 3,
+      "key": "staying_focused",
+      "label": "Staying focused",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 14,
+    "fields": {
+      "question": 3,
+      "key": "prioritizing_tasks",
+      "label": "Prioritizing tasks",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 15,
+    "fields": {
+      "question": 3,
+      "key": "managing_time",
+      "label": "Managing time",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 16,
+    "fields": {
+      "question": 3,
+      "key": "staying_consistent",
+      "label": "Staying consistent",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 17,
+    "fields": {
+      "question": 3,
+      "key": "avoiding_burnout",
+      "label": "Avoiding burnout",
+      "is_active": true
+    }
+  },
+
+  {
+    "model": "onboarding.onboardingquestion",
+    "pk": 4,
+    "fields": {
+      "key": "planning_preference",
+      "text": "How do you prefer to plan your day?",
+      "selection_type": "single",
+      "max_selections": 1,
+      "is_required": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 18,
+    "fields": {
+      "question": 4,
+      "key": "detailed_hourly_schedule",
+      "label": "Detailed hourly schedule",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 19,
+    "fields": {
+      "question": 4,
+      "key": "flexible_todo_list",
+      "label": "Flexible to-do list",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 20,
+    "fields": {
+      "question": 4,
+      "key": "top_three_priorities",
+      "label": "Top 3 priorities",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 21,
+    "fields": {
+      "question": 4,
+      "key": "time_blocking",
+      "label": "Time-blocking",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 22,
+    "fields": {
+      "question": 4,
+      "key": "ai_organizes_day",
+      "label": "Let AI organize my day",
+      "is_active": true
+    }
+  },
+
+  {
+    "model": "onboarding.onboardingquestion",
+    "pk": 5,
+    "fields": {
+      "key": "task_completion_blocker",
+      "text": "What usually stops you from completing tasks?",
+      "selection_type": "single",
+      "max_selections": 1,
+      "is_required": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 23,
+    "fields": {
+      "question": 5,
+      "key": "distractions",
+      "label": "Distractions",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 24,
+    "fields": {
+      "question": 5,
+      "key": "unexpected_tasks",
+      "label": "Unexpected tasks",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 25,
+    "fields": {
+      "question": 5,
+      "key": "tasks_take_longer",
+      "label": "Tasks take longer than expected",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 26,
+    "fields": {
+      "question": 5,
+      "key": "low_motivation",
+      "label": "Low motivation",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 27,
+    "fields": {
+      "question": 5,
+      "key": "too_many_tasks",
+      "label": "Too many tasks",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 28,
+    "fields": {
+      "question": 5,
+      "key": "lack_of_clear_goals",
+      "label": "Lack of clear goals",
+      "is_active": true
+    }
+  },
+
+  {
+    "model": "onboarding.onboardingquestion",
+    "pk": 6,
+    "fields": {
+      "key": "ai_assistance",
+      "text": "How would you like AI to help you?",
+      "selection_type": "multiple",
+      "max_selections": 3,
+      "is_required": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 29,
+    "fields": {
+      "question": 6,
+      "key": "plan_my_day",
+      "label": "Plan my day",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 30,
+    "fields": {
+      "question": 6,
+      "key": "prioritize_tasks",
+      "label": "Prioritize tasks",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 31,
+    "fields": {
+      "question": 6,
+      "key": "send_reminders",
+      "label": "Send reminders",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 32,
+    "fields": {
+      "question": 6,
+      "key": "track_progress",
+      "label": "Track my progress",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 33,
+    "fields": {
+      "question": 6,
+      "key": "accountability",
+      "label": "Keep me accountable",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 34,
+    "fields": {
+      "question": 6,
+      "key": "suggest_improvements",
+      "label": "Suggest improvements",
+      "is_active": true
+    }
+  },
+
+  {
+    "model": "onboarding.onboardingquestion",
+    "pk": 7,
+    "fields": {
+      "key": "habits_and_skills",
+      "text": "What habits or skills do you want to improve?",
+      "selection_type": "multiple",
+      "max_selections": 3,
+      "is_required": true,
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 35,
+    "fields": {
+      "question": 7,
+      "key": "exercise_regularly",
+      "label": "Exercise regularly",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 36,
+    "fields": {
+      "question": 7,
+      "key": "meditate_daily",
+      "label": "Meditate daily",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 37,
+    "fields": {
+      "question": 7,
+      "key": "read_more",
+      "label": "Read more",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 38,
+    "fields": {
+      "question": 7,
+      "key": "learn_new_skills",
+      "label": "Learn new skills",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 39,
+    "fields": {
+      "question": 7,
+      "key": "improve_focus",
+      "label": "Improve focus",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 40,
+    "fields": {
+      "question": 7,
+      "key": "consistent_routine",
+      "label": "Build a consistent routine",
+      "is_active": true
+    }
+  },
+  {
+    "model": "onboarding.onboardingoption",
+    "pk": 41,
+    "fields": {
+      "question": 7,
+      "key": "sleep_better",
+      "label": "Sleep better",
+      "is_active": true
+    }
+  }
+]

@@ -1,6 +1,20 @@
 from django.contrib import admin
 
-from users.models import UserProfile
+from users.models import Interest, PersonalityTag, UserProfile
+
+
+@admin.register(Interest)
+class InterestAdmin(admin.ModelAdmin):
+    list_display = ("key", "name", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("key", "name")
+
+
+@admin.register(PersonalityTag)
+class PersonalityTagAdmin(admin.ModelAdmin):
+    list_display = ("key", "name", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("key", "name")
 
 
 @admin.register(UserProfile)

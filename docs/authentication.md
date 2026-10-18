@@ -13,10 +13,14 @@ The API uses short-lived JWT access tokens and rotating refresh tokens. It uses 
 | GET | `/api/auth/user/` | Get the current user's profile |
 | GET, PUT, PATCH | `/api/auth/profile/` | Retrieve or update the authenticated user's own MyTabBoard profile |
 | POST | `/api/auth/google/` | Sign in with a Google authorization `code` or `access_token` |
+| GET, PATCH | `/api/onboarding/` | Fetch all onboarding data or save one onboarding step |
+| GET | `/api/onboarding/status/` | Get completion status from the user's profile |
 
 For authenticated endpoints, send `Authorization: Bearer <access-token>`. Signup, password login, and social login return JWTs in the response body; the extension should store them in extension-only storage and send the access token as a bearer token. Refresh tokens are rotated and blacklisted after rotation.
 
-The profile endpoint derives ownership from the bearer token; clients cannot select another user's profile. New users receive an empty profile with the `UTC` time zone and empty personality/interests lists. Updates accept IANA time-zone identifiers and up to 10 strings per list.
+The profile endpoint derives ownership from the bearer token; clients cannot select another user's profile. New users receive an empty profile with the `UTC` time zone and empty personality/interests relations. Updates accept IANA time-zone identifiers; profile catalog selection counts have no arbitrary cap.
+
+The onboarding GET returns the profile, all active questionnaire pages, interests, personality tags, and only the authenticated user's saved selections. PATCH accepts one `step` (`basic_info`, `interests`, or `personality_tags`) per request. Completion is derived from `UserProfile.onboarding_completed_at` and is set after all required answers plus at least one interest and personality tag are saved.
 
 ## Local setup
 
@@ -34,6 +38,14 @@ Then apply migrations and start Django:
 python manage.py migrate
 python manage.py runserver
 ```
+
+After migrations, load the initial questionnaire fixture. Interest and personality-tag catalog rows are managed directly in the database and are not included in fixtures.
+
+```sh
+python manage.py loaddata onboarding/fixtures/onboarding.json
+```
+
+Load the questionnaire fixture once into an empty onboarding catalog; it uses explicit primary keys.
 
 Google sign-in requires a Google OAuth application. Put its client ID in `.env`; a `SocialApp` configured in Django admin is also supported. The client secret is optional for the Chrome extension access-token flow.
 
