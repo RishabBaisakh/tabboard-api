@@ -6,7 +6,7 @@ The API uses short-lived JWT access tokens and rotating refresh tokens. It uses 
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| POST | `/api/auth/registration/` | Create an account with `username`, `email`, `password1`, and `password2` |
+| POST | `/api/auth/registration/` | Create an account with `email`, `password1`, and `password2`; the server generates a unique username |
 | POST | `/api/auth/login/` | Sign in with `email` and `password` |
 | POST | `/api/auth/logout/` | Blacklist a refresh token; send it as `refresh` in the request body |
 | POST | `/api/auth/token/refresh/` | Rotate a refresh token |

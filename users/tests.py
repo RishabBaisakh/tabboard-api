@@ -10,7 +10,6 @@ class AuthenticationEndpointTests(APITestCase):
         response = self.client.post(
             reverse("rest_register"),
             {
-                "username": "new-user",
                 "email": "new-user@example.com",
                 "password1": "Strong-password-123!",
                 "password2": "Strong-password-123!",
@@ -26,6 +25,7 @@ class AuthenticationEndpointTests(APITestCase):
         profile = self.client.get(reverse("rest_user_details"))
         self.assertEqual(profile.status_code, status.HTTP_200_OK)
         self.assertEqual(profile.data["email"], "new-user@example.com")
+        self.assertTrue(profile.data["username"])
 
     def test_login_accepts_email_and_password(self):
         from django.contrib.auth import get_user_model
