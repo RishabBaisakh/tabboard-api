@@ -1,11 +1,15 @@
 from django.conf import settings
+from rest_framework.generics import RetrieveUpdateAPIView
 from rest_framework.exceptions import APIException
+from rest_framework.permissions import IsAuthenticated
 
 from allauth.socialaccount.adapter import get_adapter
 from allauth.socialaccount.models import SocialApp
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
+from users.models import UserProfile
+from users.serializers import UserProfileSerializer
 
 
 class SocialProviderNotConfigured(APIException):
@@ -49,3 +53,13 @@ class GoogleLogin(ConfiguredSocialLoginView):
     @property
     def callback_url(self):
         return settings.GOOGLE_OAUTH_CALLBACK_URL
+
+
+class UserProfileView(RetrieveUpdateAPIView):
+    serializer_class = UserProfileSerializer
+    permission_classes = (IsAuthenticated,)
+    http_method_names = ("get", "put", "patch", "head", "options")
+
+    def get_object(self):
+        profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
+        return profile

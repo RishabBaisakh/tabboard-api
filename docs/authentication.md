@@ -11,9 +11,12 @@ The API uses short-lived JWT access tokens and rotating refresh tokens. It uses 
 | POST | `/api/auth/logout/` | Blacklist a refresh token; send it as `refresh` in the request body |
 | POST | `/api/auth/token/refresh/` | Rotate a refresh token |
 | GET | `/api/auth/user/` | Get the current user's profile |
+| GET, PUT, PATCH | `/api/auth/profile/` | Retrieve or update the authenticated user's own MyTabBoard profile |
 | POST | `/api/auth/google/` | Sign in with a Google authorization `code` or `access_token` |
 
 For authenticated endpoints, send `Authorization: Bearer <access-token>`. Signup, password login, and social login return JWTs in the response body; the extension should store them in extension-only storage and send the access token as a bearer token. Refresh tokens are rotated and blacklisted after rotation.
+
+The profile endpoint derives ownership from the bearer token; clients cannot select another user's profile. New users receive an empty profile with the `UTC` time zone and empty personality/interests lists. Updates accept IANA time-zone identifiers and up to 10 strings per list.
 
 ## Local setup
 

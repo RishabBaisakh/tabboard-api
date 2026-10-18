@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     "django.contrib.sites",
     "corsheaders",
     "rest_framework",
@@ -66,7 +67,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.google",
     "dj_rest_auth",
     "dj_rest_auth.registration",
-    "users",
+    "users.apps.UsersConfig",
     "core",
 ]
 
