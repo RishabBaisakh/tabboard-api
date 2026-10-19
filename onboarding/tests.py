@@ -63,7 +63,7 @@ class OnboardingApiTests(TestCase):
         return self.client.patch(
             reverse("onboarding"),
             {
-                "step": "basic_info",
+                "step": "questions",
                 "answers": [
                     {
                         "question_key": question.key,
@@ -161,7 +161,7 @@ class OnboardingApiTests(TestCase):
             response = self.client.patch(
                 url,
                 {
-                    "step": "basic_info",
+                    "step": "questions",
                     "answers": [
                         {
                             "question_key": question.key,
@@ -184,7 +184,7 @@ class OnboardingApiTests(TestCase):
         response = self.client.patch(
             reverse("onboarding"),
             {
-                "step": "basic_info",
+                "step": "questions",
                 "answers": [
                     {
                         "question_key": single_question.key,
@@ -202,7 +202,7 @@ class OnboardingApiTests(TestCase):
         response = self.client.patch(
             reverse("onboarding"),
             {
-                "step": "basic_info",
+                "step": "questions",
                 "answers": [
                     {
                         "question_key": multiple_question.key,
@@ -220,7 +220,7 @@ class OnboardingApiTests(TestCase):
         response = self.client.patch(
             reverse("onboarding"),
             {
-                "step": "basic_info",
+                "step": "questions",
                 "answers": [
                     {
                         "question_key": self.questions[0].key,
@@ -241,7 +241,7 @@ class OnboardingApiTests(TestCase):
         response = self.client.patch(
             reverse("onboarding"),
             {
-                "step": "basic_info",
+                "step": "questions",
                 "answers": [
                     {
                         "question_key": question.key,
@@ -261,7 +261,7 @@ class OnboardingApiTests(TestCase):
         response = self.client.patch(
             reverse("onboarding"),
             {
-                "step": "basic_info",
+                "step": "questions",
                 "answers": [
                     {
                         "question_key": self.questions[0].key,
@@ -299,7 +299,7 @@ class OnboardingApiTests(TestCase):
         response = self.client.patch(
             reverse("onboarding"),
             {
-                "step": "basic_info",
+                "step": "questions",
                 "answers": [
                     {
                         "question_key": self.questions[0].key,
@@ -336,6 +336,26 @@ class OnboardingApiTests(TestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_basic_info_does_not_accept_question_answers(self):
+        response = self.client.patch(
+            reverse("onboarding"),
+            {
+                "step": "basic_info",
+                "display_name": "Rishab",
+                "answers": [
+                    {
+                        "question_key": self.questions[0].key,
+                        "selected_option_ids": [
+                            self.options[self.questions[0].key][0].pk
+                        ],
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("answers", response.data["non_field_errors"][0])
 
         response = self.client.patch(
             reverse("onboarding"),

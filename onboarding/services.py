@@ -147,6 +147,20 @@ def _save_answer(user, answer, question=None):
     }
 
 
+def _save_answers(user, answers):
+    saved_answers = []
+    seen_question_ids = set()
+    for answer in answers:
+        question = _get_question(answer)
+        if question.pk in seen_question_ids:
+            raise ValidationError(
+                {"answers": "A question may only be submitted once per request."}
+            )
+        seen_question_ids.add(question.pk)
+        saved_answers.append(_save_answer(user, answer, question))
+    return saved_answers
+
+
 def _resolve_active_options(model, option_ids, field_name):
     options = list(model.objects.filter(is_active=True, pk__in=option_ids))
     if len(options) != len(option_ids):
@@ -213,24 +227,15 @@ def save_onboarding_step(user, step, data):
                 changed_fields.append(field)
         if changed_fields:
             profile.save(update_fields=[*changed_fields, "updated_at"])
-        saved_answers = []
-        seen_question_ids = set()
-        for answer in data.get("answers", []):
-            question = _get_question(answer)
-            if question.pk in seen_question_ids:
-                raise ValidationError(
-                    {"answers": "A question may only be submitted once per request."}
-                )
-            seen_question_ids.add(question.pk)
-            saved_answers.append(_save_answer(user, answer, question))
         saved = {
             "profile": {
                 "display_name": profile.display_name,
                 "bio": profile.bio,
                 "time_zone": profile.time_zone,
             },
-            "answers": saved_answers,
         }
+    elif step == "questions":
+        saved = {"answers": _save_answers(user, data["answers"])}
     elif step == "interests":
         options = _resolve_active_options(
             Interest,

@@ -46,29 +46,33 @@ class BasicInfoStepSerializer(StrictSerializer):
     )
     bio = serializers.CharField(max_length=300, required=False, allow_blank=True)
     time_zone = serializers.CharField(max_length=50, required=False)
-    answers = QuestionAnswerSerializer(many=True, required=False)
 
     def validate_time_zone(self, value):
         return validate_iana_time_zone(value)
 
     def validate(self, attrs):
         if not attrs:
-            raise serializers.ValidationError(
-                "Provide profile fields or question answers."
-            )
+            raise serializers.ValidationError("Provide at least one profile field.")
+        return attrs
+
+
+class QuestionsStepSerializer(StrictSerializer):
+    answers = QuestionAnswerSerializer(many=True, allow_empty=False)
+
+    def validate_answers(self, answers):
         identities = [
             (
                 ("key", answer["question_key"])
                 if "question_key" in answer
                 else ("id", answer["question_id"])
             )
-            for answer in attrs.get("answers", [])
+            for answer in answers
         ]
         if len(identities) != len(set(identities)):
             raise serializers.ValidationError(
-                {"answers": "A question may only be submitted once per request."}
+                "A question may only be submitted once per request."
             )
-        return attrs
+        return answers
 
 
 class ProfileOptionStepSerializer(StrictSerializer):
@@ -86,6 +90,7 @@ class ProfileOptionStepSerializer(StrictSerializer):
 class OnboardingPatchSerializer(serializers.Serializer):
     STEP_SERIALIZERS = {
         "basic_info": BasicInfoStepSerializer,
+        "questions": QuestionsStepSerializer,
         "interests": ProfileOptionStepSerializer,
         "personality_tags": ProfileOptionStepSerializer,
     }
@@ -96,12 +101,12 @@ class OnboardingPatchSerializer(serializers.Serializer):
         step = data.get("step")
         if not isinstance(step, str):
             raise serializers.ValidationError(
-                {"step": "Use basic_info, interests, or personality_tags."}
+                {"step": "Use basic_info, questions, interests, or personality_tags."}
             )
         serializer_class = self.STEP_SERIALIZERS.get(step)
         if serializer_class is None:
             raise serializers.ValidationError(
-                {"step": "Use basic_info, interests, or personality_tags."}
+                {"step": "Use basic_info, questions, interests, or personality_tags."}
             )
 
         payload = {key: value for key, value in data.items() if key != "step"}
