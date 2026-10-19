@@ -20,7 +20,7 @@ For authenticated endpoints, send `Authorization: Bearer <access-token>`. Signup
 
 The profile endpoint derives ownership from the bearer token; clients cannot select another user's profile. New users receive an empty profile with the `UTC` time zone and empty personality/interests relations. Updates accept IANA time-zone identifiers; profile catalog selection counts have no arbitrary cap.
 
-The onboarding GET returns the profile, all active questionnaire pages, interests, personality tags, and only the authenticated user's saved selections. PATCH accepts one `step` (`basic_info`, `questions`, `interests`, or `personality_tags`) per request. `basic_info` accepts only `display_name`, `bio`, and `time_zone`; submit questionnaire answers separately with `step: "questions"` and an `answers` array. Completion is derived from `UserProfile.onboarding_completed_at` and is set after all required answers plus at least one interest and personality tag are saved.
+The onboarding GET returns the profile, all active questionnaire pages, interests, personality tags, and only the authenticated user's saved selections. PATCH accepts one `step` (`basic_info`, `questions`, `interests`, or `personality_tags`) per request. `basic_info` accepts only `bio` and `time_zone`; `display_name` is read-only. Submit questionnaire answers separately with `step: "questions"` and an `answers` array. Completion is derived from `UserProfile.onboarding_completed_at` and is set after all required answers plus at least one interest and personality tag are saved.
 
 ## Local setup
 

@@ -2,6 +2,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from rest_framework import serializers
 from users.models import Interest, PersonalityTag, UserProfile
+from users.services import update_user_profile
 
 
 def validate_iana_time_zone(value):
@@ -28,7 +29,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "user", "created_at", "updated_at")
+        read_only_fields = (
+            "id",
+            "user",
+            "display_name",
+            "created_at",
+            "updated_at",
+        )
 
     interests = serializers.PrimaryKeyRelatedField(
         many=True,
@@ -43,3 +50,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def validate_time_zone(self, value):
         return validate_iana_time_zone(value)
+
+    def update(self, instance, validated_data):
+        return update_user_profile(instance, validated_data)

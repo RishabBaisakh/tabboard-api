@@ -190,7 +190,7 @@ class UserProfileTests(APITestCase):
         response = self.client.patch(
             url,
             {
-                "display_name": "Rishab",
+                "display_name": "This should be ignored",
                 "time_zone": "America/Toronto",
                 "bio": "Building MyTabBoard",
                 "personality_tags": [tag.pk],
@@ -204,7 +204,8 @@ class UserProfileTests(APITestCase):
 
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["display_name"], "Rishab")
+        self.assertEqual(response.data["display_name"], "")
+        self.assertEqual(response.data["bio"], "Building MyTabBoard")
 
     def test_profile_owner_cannot_be_changed_by_client(self):
         other_user = get_user_model().objects.create_user(

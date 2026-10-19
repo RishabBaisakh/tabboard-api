@@ -4,6 +4,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 
 from onboarding.models import OnboardingOption, OnboardingQuestion, OnboardingResponse
 from users.models import Interest, PersonalityTag, UserProfile
+from users.services import update_user_profile
 
 
 def get_user_profile(user):
@@ -219,14 +220,10 @@ def save_onboarding_step(user, step, data):
         raise NotFound("User profile is unavailable. Please sign in again.")
 
     if step == "basic_info":
-        profile_fields = ("display_name", "bio", "time_zone")
-        changed_fields = []
-        for field in profile_fields:
-            if field in data:
-                setattr(profile, field, data[field])
-                changed_fields.append(field)
-        if changed_fields:
-            profile.save(update_fields=[*changed_fields, "updated_at"])
+        profile = update_user_profile(
+            profile,
+            {field: data[field] for field in ("bio", "time_zone") if field in data},
+        )
         saved = {
             "profile": {
                 "display_name": profile.display_name,
@@ -242,7 +239,7 @@ def save_onboarding_step(user, step, data):
             data["selected_ids"],
             "selected_ids",
         )
-        profile.interests.set(options)
+        update_user_profile(profile, {"interests": options})
         saved = {"selected_ids": [item.pk for item in options]}
     else:
         options = _resolve_active_options(
@@ -250,7 +247,7 @@ def save_onboarding_step(user, step, data):
             data["selected_ids"],
             "selected_ids",
         )
-        profile.personality_tags.set(options)
+        update_user_profile(profile, {"personality_tags": options})
         saved = {"selected_ids": [item.pk for item in options]}
 
     _maybe_complete_onboarding(profile)

@@ -8,8 +8,8 @@ from allauth.socialaccount.models import SocialApp
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
-from users.models import UserProfile
 from users.serializers import UserProfileSerializer
+from users.services import get_or_create_user_profile
 
 
 class SocialProviderNotConfigured(APIException):
@@ -61,5 +61,4 @@ class UserProfileView(RetrieveUpdateAPIView):
     http_method_names = ("get", "put", "patch", "head", "options")
 
     def get_object(self):
-        profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
-        return profile
+        return get_or_create_user_profile(self.request.user)
