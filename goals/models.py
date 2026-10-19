@@ -16,6 +16,7 @@ class Goal(models.Model):
         related_name="goals",
     )
     title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default="")
     due_date = models.DateField(
         null=True,
         blank=True,

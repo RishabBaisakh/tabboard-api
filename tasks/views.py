@@ -55,4 +55,4 @@ class UserTaskViewSet(viewsets.ModelViewSet):
                 )
             queryset = queryset.filter(scheduled_start__lte=parsed)
 
-        return queryset.order_by("scheduled_start", "id")
+        return queryset.order_by("-created_at", "-id")

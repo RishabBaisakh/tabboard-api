@@ -26,6 +26,7 @@ class GoalListApiTests(TestCase):
             password="Strong-password-123!",
         )
         own_goal = Goal.objects.create(user=user, title="Own goal")
+        newest_goal = Goal.objects.create(user=user, title="Newest goal")
         Goal.objects.create(user=other_user, title="Private goal")
 
         client = APIClient()
@@ -33,12 +34,69 @@ class GoalListApiTests(TestCase):
         response = client.get(reverse("goal-list"))
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual([item["id"] for item in response.data], [own_goal.pk])
-        self.assertIsNone(response.data[0]["due_date"])
+        self.assertEqual(
+            [item["id"] for item in response.data], [newest_goal.pk, own_goal.pk]
+        )
+        self.assertIsNone(response.data[1]["due_date"])
 
     def test_goals_endpoint_requires_authentication(self):
         response = APIClient().get(reverse("goal-list"))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_authenticated_user_can_create_goal_with_optional_due_date(self):
+        user = get_user_model().objects.create_user(
+            username="goal-creator",
+            email="goal-creator@example.com",
+            password="Strong-password-123!",
+        )
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(user)}")
+
+        response = client.post(
+            reverse("goal-list"),
+            {
+                "title": "Learn Rust and build projects",
+                "description": "",
+                "due_date": (timezone.localdate() + timedelta(days=6)).isoformat(),
+                "user": get_user_model()
+                .objects.create_user(
+                    username="attacker",
+                    email="attacker@example.com",
+                    password="Strong-password-123!",
+                )
+                .pk,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        goal = Goal.objects.get(pk=response.data["id"])
+        self.assertEqual(goal.user, user)
+        self.assertEqual(goal.title, "Learn Rust and build projects")
+        self.assertEqual(goal.description, "")
+        self.assertEqual(goal.due_date.isoformat(), response.data["due_date"])
+
+    def test_goal_creation_rejects_due_date_today_or_in_the_past(self):
+        user = get_user_model().objects.create_user(
+            username="goal-date-user",
+            email="goal-date-user@example.com",
+            password="Strong-password-123!",
+        )
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(user)}")
+
+        for due_date in (
+            timezone.localdate(),
+            timezone.localdate() - timedelta(days=1),
+        ):
+            with self.subTest(due_date=due_date):
+                response = client.post(
+                    reverse("goal-list"),
+                    {"title": "Invalid due date", "due_date": due_date.isoformat()},
+                    format="json",
+                )
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn("due_date", response.data)
 
     def test_due_date_is_optional_and_future_dates_are_valid(self):
         user = get_user_model().objects.create_user(

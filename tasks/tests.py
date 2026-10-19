@@ -242,7 +242,7 @@ class TaskApiTests(TestCase):
         )
         response = self.client.get(reverse("task-list"))
         self.assertEqual(
-            [item["id"] for item in response.data], [str(earlier.pk), str(later.pk)]
+            [item["id"] for item in response.data], [str(later.pk), str(earlier.pk)]
         )
 
         response = self.client.get(reverse("task-list") + "?status=completed")
