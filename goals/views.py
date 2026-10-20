@@ -8,7 +8,15 @@ from goals.models import Goal
 class GoalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Goal
-        fields = ("id", "title", "description", "start_date", "due_date")
+        fields = (
+            "id",
+            "title",
+            "description",
+            "start_date",
+            "due_date",
+            "timeline",
+            "motivation",
+        )
         read_only_fields = ("id",)
 
 

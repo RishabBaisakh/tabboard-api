@@ -212,3 +212,123 @@ class GoalStartDateTests(TestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class GoalTimelineMotivationTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="tl-owner", email="tl@example.com", password="Strong-password-123!"
+        )
+        self.other = user_model.objects.create_user(
+            username="tl-other", email="tl2@example.com", password="Strong-password-123!"
+        )
+        self.client = APIClient()
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}"
+        )
+
+    def test_model_defaults(self):
+        goal = Goal.objects.create(user=self.user, title="G")
+        self.assertEqual(goal.timeline, Goal.Timeline.SHORT_TERM)
+        self.assertEqual(goal.motivation, "")
+
+    def test_valid_timeline_values_pass_model_validation(self):
+        for value in ("short_term", "mid_term", "long_term"):
+            with self.subTest(value=value):
+                Goal(user=self.user, title="G", timeline=value).full_clean()
+
+    def test_invalid_timeline_fails_model_validation(self):
+        with self.assertRaises(ValidationError):
+            Goal(user=self.user, title="G", timeline="someday").full_clean()
+
+    def test_create_defaults_when_fields_omitted(self):
+        response = self.client.post(reverse("goal-list"), {"title": "G"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["timeline"], "short_term")
+        self.assertEqual(response.data["motivation"], "")
+
+    def test_create_with_timeline_and_motivation(self):
+        for value in ("short_term", "mid_term", "long_term"):
+            with self.subTest(value=value):
+                response = self.client.post(
+                    reverse("goal-list"),
+                    {"title": "G", "timeline": value, "motivation": "Because"},
+                    format="json",
+                )
+                self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+                goal = Goal.objects.get(pk=response.data["id"])
+                self.assertEqual(goal.timeline, value)
+                self.assertEqual(goal.motivation, "Because")
+
+    def test_invalid_timeline_rejected(self):
+        response = self.client.post(
+            reverse("goal-list"), {"title": "G", "timeline": "someday"}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("timeline", response.data)
+
+    def test_update_timeline_and_motivation(self):
+        goal = Goal.objects.create(user=self.user, title="G", due_date=None)
+        response = self.client.patch(
+            reverse("goal-detail", args=[goal.pk]),
+            {"timeline": "long_term", "motivation": "Why"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        goal.refresh_from_db()
+        self.assertEqual(goal.timeline, "long_term")
+        self.assertEqual(goal.motivation, "Why")
+
+        response = self.client.patch(
+            reverse("goal-detail", args=[goal.pk]), {"motivation": ""}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        goal.refresh_from_db()
+        self.assertEqual(goal.motivation, "")
+        self.assertEqual(goal.timeline, "long_term")
+
+    def test_timeline_is_not_derived_from_dates(self):
+        response = self.client.post(
+            reverse("goal-list"),
+            {
+                "title": "G",
+                "timeline": "long_term",
+                "start_date": "2030-01-01",
+                "due_date": "2030-01-08",
+            },
+            format="json",
+        )
+        self.assertEqual(response.data["timeline"], "long_term")
+
+    def test_serialization_in_list_and_detail(self):
+        goal = Goal.objects.create(
+            user=self.user, title="G", timeline="mid_term", motivation="M"
+        )
+        listed = self.client.get(reverse("goal-list")).data[0]
+        detail = self.client.get(reverse("goal-detail", args=[goal.pk])).data
+        for data in (listed, detail):
+            self.assertEqual(data["timeline"], "mid_term")
+            self.assertEqual(data["motivation"], "M")
+            self.assertIn("start_date", data)
+            self.assertIn("due_date", data)
+
+    def test_existing_goal_without_new_values_is_compatible(self):
+        goal = Goal.objects.create(
+            user=self.user, title="Legacy", description="d", start_date="2026-01-01"
+        )
+        Goal.objects.filter(pk=goal.pk).update(timeline="short_term", motivation="")
+        data = self.client.get(reverse("goal-detail", args=[goal.pk])).data
+        self.assertEqual(data["title"], "Legacy")
+        self.assertEqual(data["description"], "d")
+        self.assertEqual(data["timeline"], "short_term")
+        self.assertEqual(data["motivation"], "")
+
+    def test_cannot_update_other_users_timeline(self):
+        goal = Goal.objects.create(user=self.other, title="G")
+        response = self.client.patch(
+            reverse("goal-detail", args=[goal.pk]),
+            {"timeline": "long_term"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

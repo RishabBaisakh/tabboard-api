@@ -10,6 +10,11 @@ def validate_future_due_date(value):
 
 
 class Goal(models.Model):
+    class Timeline(models.TextChoices):
+        SHORT_TERM = "short_term", "Short-term"
+        MID_TERM = "mid_term", "Mid-term"
+        LONG_TERM = "long_term", "Long-term"
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -23,6 +28,12 @@ class Goal(models.Model):
         blank=True,
         validators=[validate_future_due_date],
     )
+    timeline = models.CharField(
+        max_length=20,
+        choices=Timeline.choices,
+        default=Timeline.SHORT_TERM,
+    )
+    motivation = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
