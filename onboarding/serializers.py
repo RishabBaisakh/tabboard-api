@@ -41,6 +41,11 @@ class QuestionAnswerSerializer(StrictSerializer):
 
 
 class BasicInfoStepSerializer(StrictSerializer):
+    display_name = serializers.CharField(
+        max_length=80,
+        required=False,
+        allow_blank=True,
+    )
     bio = serializers.CharField(max_length=300, required=False, allow_blank=True)
     time_zone = serializers.CharField(max_length=50, required=False)
 

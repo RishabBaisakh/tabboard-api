@@ -17,6 +17,7 @@ class Goal(models.Model):
     )
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True, default="")
+    start_date = models.DateField(default=timezone.localdate)
     due_date = models.DateField(
         null=True,
         blank=True,

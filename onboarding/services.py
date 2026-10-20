@@ -222,7 +222,11 @@ def save_onboarding_step(user, step, data):
     if step == "basic_info":
         profile = update_user_profile(
             profile,
-            {field: data[field] for field in ("bio", "time_zone") if field in data},
+            {
+                field: data[field]
+                for field in ("display_name", "bio", "time_zone")
+                if field in data
+            },
         )
         saved = {
             "profile": {

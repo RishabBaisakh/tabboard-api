@@ -13,7 +13,7 @@ def update_user_profile(profile, data):
     values = dict(data)
     changed_fields = []
 
-    for field in ("bio", "time_zone"):
+    for field in ("display_name", "bio", "time_zone"):
         if field in values:
             setattr(profile, field, values.pop(field))
             changed_fields.append(field)

@@ -143,3 +143,72 @@ class GoalListApiTests(TestCase):
                 )
                 with self.assertRaises(ValidationError):
                     goal.full_clean()
+
+
+class GoalStartDateTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="sd-owner", email="sd@example.com", password="Strong-password-123!"
+        )
+        self.other = user_model.objects.create_user(
+            username="sd-other", email="sd2@example.com", password="Strong-password-123!"
+        )
+        self.client = APIClient()
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}"
+        )
+
+    def test_start_date_defaults_to_today(self):
+        response = self.client.post(reverse("goal-list"), {"title": "G"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["start_date"], timezone.localdate().isoformat())
+
+    def test_explicit_start_date_is_preserved(self):
+        response = self.client.post(
+            reverse("goal-list"),
+            {"title": "G", "start_date": "2030-01-15"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["start_date"], "2030-01-15")
+
+    def test_invalid_start_date_rejected(self):
+        response = self.client.post(
+            reverse("goal-list"), {"title": "G", "start_date": "nope"}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("start_date", response.data)
+
+    def test_update_start_date(self):
+        goal = Goal.objects.create(user=self.user, title="G")
+        response = self.client.patch(
+            reverse("goal-detail", args=[goal.pk]),
+            {"start_date": "2031-02-03"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        goal.refresh_from_db()
+        self.assertEqual(goal.start_date.isoformat(), "2031-02-03")
+
+    def test_cannot_update_other_users_goal(self):
+        goal = Goal.objects.create(user=self.other, title="G")
+        response = self.client.patch(
+            reverse("goal-detail", args=[goal.pk]),
+            {"start_date": "2031-02-03"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_detail_requires_authentication(self):
+        goal = Goal.objects.create(user=self.user, title="G")
+        response = APIClient().get(reverse("goal-detail", args=[goal.pk]))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_due_date_validation_unchanged(self):
+        response = self.client.post(
+            reverse("goal-list"),
+            {"title": "G", "due_date": timezone.localdate().isoformat()},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

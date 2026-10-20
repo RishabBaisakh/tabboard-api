@@ -342,6 +342,7 @@ class OnboardingApiTests(TestCase):
             reverse("onboarding"),
             {
                 "step": "basic_info",
+                "display_name": "Radhika Mahajan",
                 "bio": "Profile details",
                 "answers": [
                     {
@@ -359,10 +360,18 @@ class OnboardingApiTests(TestCase):
 
         response = self.client.patch(
             reverse("onboarding"),
-            {"step": "basic_info", "display_name": "Rishab"},
+            {
+                "step": "basic_info",
+                "display_name": "Radhika Mahajan",
+                "bio": "Profile details",
+            },
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data["saved"]["profile"]["display_name"],
+            "Radhika Mahajan",
+        )
 
         response = self.client.patch(
             reverse("onboarding"),

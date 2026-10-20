@@ -1,4 +1,4 @@
-from rest_framework.generics import ListCreateAPIView
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import serializers
 
@@ -8,7 +8,7 @@ from goals.models import Goal
 class GoalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Goal
-        fields = ("id", "title", "description", "due_date")
+        fields = ("id", "title", "description", "start_date", "due_date")
         read_only_fields = ("id",)
 
 
@@ -23,3 +23,11 @@ class UserGoalListView(ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class UserGoalDetailView(RetrieveUpdateAPIView):
+    serializer_class = GoalSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        return Goal.objects.filter(user=self.request.user)
