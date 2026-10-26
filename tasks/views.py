@@ -1,12 +1,29 @@
+from datetime import date, datetime, time, timedelta
+
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
-from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 
 from tasks.models import Task
 from tasks.serializers import TaskSerializer
+
+
+def _parse_date_param(query_params, name):
+    values = query_params.getlist(name)
+    if len(values) > 1:
+        raise ValidationError({name: "Provide this parameter only once."})
+    if not values:
+        return None
+
+    try:
+        parsed = date.fromisoformat(values[0])
+    except ValueError as error:
+        raise ValidationError({name: "Use the YYYY-MM-DD date format."}) from error
+    if parsed.isoformat() != values[0]:
+        raise ValidationError({name: "Use the YYYY-MM-DD date format."})
+    return parsed
 
 
 class UserTaskViewSet(viewsets.ModelViewSet):
@@ -16,6 +33,35 @@ class UserTaskViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Task.objects.filter(user=self.request.user).select_related("goal")
+
+        if self.action == "list":
+            start_date = _parse_date_param(self.request.query_params, "start_date")
+            end_date = _parse_date_param(self.request.query_params, "end_date")
+            if end_date is not None and start_date is None:
+                raise ValidationError(
+                    {"start_date": "Required when end_date is provided."}
+                )
+            if start_date is None:
+                start_date = timezone.localdate()
+            if end_date is None:
+                end_date = start_date
+            if end_date < start_date:
+                raise ValidationError({"end_date": "Must be on or after start_date."})
+            if end_date == date.max:
+                raise ValidationError({"end_date": "Date is out of range."})
+
+            current_timezone = timezone.get_current_timezone()
+            range_start = timezone.make_aware(
+                datetime.combine(start_date, time.min), current_timezone
+            )
+            range_end = timezone.make_aware(
+                datetime.combine(end_date + timedelta(days=1), time.min),
+                current_timezone,
+            )
+            queryset = queryset.filter(
+                scheduled_start__lt=range_end,
+                scheduled_end__gt=range_start,
+            )
 
         status_value = self.request.query_params.get("status")
         if status_value:

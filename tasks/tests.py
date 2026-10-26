@@ -1,8 +1,9 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone as django_timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import AccessToken
@@ -98,7 +99,9 @@ class TaskApiTests(TestCase):
             scheduled_start=datetime(2030, 4, 10, 9, tzinfo=timezone.utc),
             scheduled_end=datetime(2030, 4, 10, 10, tzinfo=timezone.utc),
         )
-        list_response = self.client.get(reverse("task-list"))
+        list_response = self.client.get(
+            reverse("task-list") + "?start_date=2030-04-10"
+        )
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(list_response.data), 1)
 
@@ -240,21 +243,195 @@ class TaskApiTests(TestCase):
             scheduled_start=datetime(2030, 4, 11, 9, tzinfo=timezone.utc),
             scheduled_end=datetime(2030, 4, 11, 10, tzinfo=timezone.utc),
         )
-        response = self.client.get(reverse("task-list"))
+        date_range = "?start_date=2030-04-10&end_date=2030-04-11"
+        response = self.client.get(reverse("task-list") + date_range)
         self.assertEqual(
             [item["id"] for item in response.data], [str(later.pk), str(earlier.pk)]
         )
 
-        response = self.client.get(reverse("task-list") + "?status=completed")
-        self.assertEqual([item["id"] for item in response.data], [str(later.pk)])
-        response = self.client.get(reverse("task-list") + "?priority=high")
-        self.assertEqual([item["id"] for item in response.data], [str(earlier.pk)])
-        response = self.client.get(reverse("task-list") + f"?goal={self.goal.pk}")
-        self.assertEqual([item["id"] for item in response.data], [str(earlier.pk)])
         response = self.client.get(
-            reverse("task-list") + "?scheduled_start_after=2030-04-11T00:00:00Z"
+            reverse("task-list") + date_range + "&status=completed"
         )
         self.assertEqual([item["id"] for item in response.data], [str(later.pk)])
+        response = self.client.get(
+            reverse("task-list") + date_range + "&priority=high"
+        )
+        self.assertEqual([item["id"] for item in response.data], [str(earlier.pk)])
+        response = self.client.get(
+            reverse("task-list") + date_range + f"&goal={self.goal.pk}"
+        )
+        self.assertEqual([item["id"] for item in response.data], [str(earlier.pk)])
+        response = self.client.get(
+            reverse("task-list")
+            + date_range
+            + "&scheduled_start_after=2030-04-11T00:00:00Z"
+        )
+        self.assertEqual([item["id"] for item in response.data], [str(later.pk)])
+
+    def create_task(self, user, title, start, end):
+        return Task.objects.create(
+            user=user,
+            title=title,
+            scheduled_start=start,
+            scheduled_end=end,
+        )
+
+    def test_task_list_defaults_to_today_and_includes_overlapping_tasks(self):
+        today = django_timezone.localdate()
+        current_timezone = django_timezone.get_current_timezone()
+        start_of_today = django_timezone.make_aware(
+            datetime.combine(today, datetime.min.time()), current_timezone
+        )
+        start_of_tomorrow = django_timezone.make_aware(
+            datetime.combine(today + timedelta(days=1), datetime.min.time()),
+            current_timezone,
+        )
+        yesterday_overlap = self.create_task(
+            self.user,
+            "Continues into today",
+            start_of_today - timedelta(minutes=30),
+            start_of_today + timedelta(minutes=30),
+        )
+        today_task = self.create_task(
+            self.user,
+            "Today",
+            start_of_today + timedelta(hours=9),
+            start_of_today + timedelta(hours=10),
+        )
+        tomorrow_overlap = self.create_task(
+            self.user,
+            "Continues into tomorrow",
+            start_of_tomorrow - timedelta(minutes=30),
+            start_of_tomorrow + timedelta(minutes=30),
+        )
+        self.create_task(
+            self.user,
+            "Ended at midnight",
+            start_of_today - timedelta(hours=1),
+            start_of_today,
+        )
+
+        response = self.client.get(reverse("task-list"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            {item["id"] for item in response.data},
+            {str(yesterday_overlap.pk), str(today_task.pk), str(tomorrow_overlap.pk)},
+        )
+
+    def test_task_list_filters_a_specific_date_by_scheduled_interval_overlap(self):
+        previous_day = self.create_task(
+            self.user,
+            "Crosses into requested day",
+            datetime(2030, 4, 9, 23, 30, tzinfo=timezone.utc),
+            datetime(2030, 4, 10, 0, 30, tzinfo=timezone.utc),
+        )
+        requested_day = self.create_task(
+            self.user,
+            "On requested day",
+            datetime(2030, 4, 10, 12, tzinfo=timezone.utc),
+            datetime(2030, 4, 10, 13, tzinfo=timezone.utc),
+        )
+        next_day = self.create_task(
+            self.user,
+            "Crosses into next day",
+            datetime(2030, 4, 10, 23, 30, tzinfo=timezone.utc),
+            datetime(2030, 4, 11, 0, 30, tzinfo=timezone.utc),
+        )
+        self.create_task(
+            self.user,
+            "Starts at exclusive upper boundary",
+            datetime(2030, 4, 11, 0, tzinfo=timezone.utc),
+            datetime(2030, 4, 11, 1, tzinfo=timezone.utc),
+        )
+
+        response = self.client.get(
+            reverse("task-list") + "?start_date=2030-04-10"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            {item["id"] for item in response.data},
+            {str(previous_day.pk), str(requested_day.pk), str(next_day.pk)},
+        )
+
+    def test_task_list_date_range_is_inclusive_and_filters_overlaps(self):
+        start_boundary_overlap = self.create_task(
+            self.user,
+            "Overlaps first day",
+            datetime(2030, 4, 9, 23, 30, tzinfo=timezone.utc),
+            datetime(2030, 4, 10, 0, 30, tzinfo=timezone.utc),
+        )
+        middle_day = self.create_task(
+            self.user,
+            "Middle date",
+            datetime(2030, 4, 11, 12, tzinfo=timezone.utc),
+            datetime(2030, 4, 11, 13, tzinfo=timezone.utc),
+        )
+        end_boundary_overlap = self.create_task(
+            self.user,
+            "Overlaps last day",
+            datetime(2030, 4, 12, 23, 30, tzinfo=timezone.utc),
+            datetime(2030, 4, 13, 0, 30, tzinfo=timezone.utc),
+        )
+        self.create_task(
+            self.user,
+            "Outside range",
+            datetime(2030, 4, 13, 0, 30, tzinfo=timezone.utc),
+            datetime(2030, 4, 13, 1, 30, tzinfo=timezone.utc),
+        )
+
+        response = self.client.get(
+            reverse("task-list") + "?start_date=2030-04-10&end_date=2030-04-12"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            {item["id"] for item in response.data},
+            {
+                str(start_boundary_overlap.pk),
+                str(middle_day.pk),
+                str(end_boundary_overlap.pk),
+            },
+        )
+
+    def test_task_list_rejects_invalid_date_parameters(self):
+        invalid_queries = (
+            "?start_date=not-a-date",
+            "?start_date=2030-02-30",
+            "?start_date=",
+            "?start_date=2030-04-10&start_date=2030-04-11",
+            "?end_date=2030-04-11",
+            "?start_date=2030-04-12&end_date=2030-04-11",
+            "?start_date=9999-12-31",
+        )
+        for query in invalid_queries:
+            with self.subTest(query=query):
+                response = self.client.get(reverse("task-list") + query)
+                self.assertEqual(
+                    response.status_code, status.HTTP_400_BAD_REQUEST
+                )
+
+    def test_task_list_date_filter_keeps_tasks_isolated_by_user(self):
+        own_task = self.create_task(
+            self.user,
+            "My task",
+            datetime(2030, 4, 10, 9, tzinfo=timezone.utc),
+            datetime(2030, 4, 10, 10, tzinfo=timezone.utc),
+        )
+        self.create_task(
+            self.other_user,
+            "Other user's task",
+            datetime(2030, 4, 10, 11, tzinfo=timezone.utc),
+            datetime(2030, 4, 10, 12, tzinfo=timezone.utc),
+        )
+
+        response = self.client.get(
+            reverse("task-list") + "?start_date=2030-04-10"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([item["id"] for item in response.data], [str(own_task.pk)])
 
     def test_deleting_goal_preserves_task_and_clears_goal(self):
         task = Task.objects.create(
