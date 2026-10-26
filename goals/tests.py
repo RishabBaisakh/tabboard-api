@@ -1,7 +1,11 @@
 from datetime import timedelta
+from importlib import import_module
 
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db import connection
+from django.db.models import ProtectedError
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -9,7 +13,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import AccessToken
 
-from goals.models import Goal
+from goals.models import Goal, GoalCategory
 
 
 class GoalListApiTests(TestCase):
@@ -332,3 +336,237 @@ class GoalTimelineMotivationTests(TestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class GoalCategoryTests(TestCase):
+    expected = {
+        "health_wellness": "Health & Wellness",
+        "career_learning": "Career & Learning",
+        "family_relationships": "Family & Relationships",
+        "financial_life": "Financial Life",
+        "travel_experiences": "Travel & Experiences",
+        "personal_life": "Personal Life",
+    }
+
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="cat-owner",
+            email="cat@example.com",
+            password="Strong-password-123!",
+        )
+        self.other = user_model.objects.create_user(
+            username="cat-other",
+            email="cat2@example.com",
+            password="Strong-password-123!",
+        )
+        self.client = APIClient()
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {AccessToken.for_user(self.user)}"
+        )
+
+    def test_seeded_categories_are_listed_in_order(self):
+        response = self.client.get(reverse("goal-category-list"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([c["key"] for c in response.data], list(self.expected))
+        self.assertEqual(
+            {c["key"]: c["name"] for c in response.data}, self.expected
+        )
+        self.assertTrue(all(c["description"] for c in response.data))
+        self.assertEqual(set(response.data[0]), {"key", "name", "description"})
+
+    def test_inactive_categories_are_hidden_from_listing(self):
+        GoalCategory.objects.filter(key="personal_life").update(is_active=False)
+        response = self.client.get(reverse("goal-category-list"))
+        self.assertNotIn("personal_life", [c["key"] for c in response.data])
+        self.assertEqual(len(response.data), 5)
+
+    def test_category_endpoint_requires_authentication_and_is_read_only(self):
+        url = reverse("goal-category-list")
+        self.assertEqual(
+            APIClient().get(url).status_code, status.HTTP_401_UNAUTHORIZED
+        )
+        for method in ("post", "put", "patch", "delete"):
+            with self.subTest(method=method):
+                response = getattr(self.client, method)(url, {}, format="json")
+                self.assertEqual(
+                    response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED
+                )
+        self.assertEqual(GoalCategory.objects.count(), 6)
+
+    def test_seed_is_idempotent_and_preserves_existing_rows(self):
+        seed_module = import_module("goals.migrations.0008_seed_goal_categories")
+        category = GoalCategory.objects.get(key="health_wellness")
+        GoalCategory.objects.filter(pk=category.pk).update(name="Edited")
+        goal = Goal.objects.create(user=self.user, title="G", category=category)
+
+        seed_module.seed_categories(apps, connection.schema_editor())
+
+        self.assertEqual(GoalCategory.objects.count(), 6)
+        category.refresh_from_db()
+        self.assertEqual(category.name, "Edited")
+        goal.refresh_from_db()
+        self.assertEqual(goal.category_id, category.pk)
+
+    def test_create_goal_with_category(self):
+        response = self.client.post(
+            reverse("goal-list"),
+            {"title": "Run 5k", "category": "health_wellness"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["category"], "health_wellness")
+        self.assertEqual(response.data["category_detail"]["name"], "Health & Wellness")
+        goal = Goal.objects.get(pk=response.data["id"])
+        self.assertEqual(goal.category.key, "health_wellness")
+        self.assertEqual(goal.user, self.user)
+
+    def test_category_is_optional_and_existing_goals_stay_compatible(self):
+        legacy = Goal.objects.create(user=self.user, title="Legacy")
+        self.assertIsNone(legacy.category)
+        response = self.client.get(reverse("goal-detail", args=[legacy.pk]))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data["category"])
+        self.assertIsNone(response.data["category_detail"])
+
+        created = self.client.post(reverse("goal-list"), {"title": "G"}, format="json")
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(created.data["category"])
+
+        explicit_null = self.client.post(
+            reverse("goal-list"), {"title": "G2", "category": None}, format="json"
+        )
+        self.assertEqual(explicit_null.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(explicit_null.data["category"])
+
+        # DRF treats an empty string on a nullable relation as "no category".
+        empty = self.client.post(
+            reverse("goal-list"), {"title": "G3", "category": ""}, format="json"
+        )
+        self.assertEqual(empty.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(empty.data["category"])
+
+    def test_update_changes_and_clears_category_without_touching_other_fields(self):
+        goal = Goal.objects.create(
+            user=self.user,
+            title="G",
+            category=GoalCategory.objects.get(key="health_wellness"),
+        )
+        url = reverse("goal-detail", args=[goal.pk])
+
+        response = self.client.patch(url, {"category": "financial_life"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["category"], "financial_life")
+
+        response = self.client.patch(url, {"title": "Renamed"}, format="json")
+        self.assertEqual(response.data["category"], "financial_life")
+
+        response = self.client.patch(url, {"category": None}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        goal.refresh_from_db()
+        self.assertIsNone(goal.category)
+        self.assertEqual(goal.title, "Renamed")
+
+    def test_invalid_unknown_and_inactive_categories_are_rejected(self):
+        GoalCategory.objects.filter(key="travel_experiences").update(is_active=False)
+        for value in ("nope", "travel_experiences", 1, "Has Space"):
+            with self.subTest(value=value):
+                response = self.client.post(
+                    reverse("goal-list"),
+                    {"title": "G", "category": value},
+                    format="json",
+                )
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn("category", response.data)
+        self.assertFalse(Goal.objects.filter(title="G").exists())
+
+    def test_category_updates_are_scoped_to_the_owner(self):
+        goal = Goal.objects.create(user=self.other, title="Theirs")
+        response = self.client.patch(
+            reverse("goal-detail", args=[goal.pk]),
+            {"category": "personal_life"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        goal.refresh_from_db()
+        self.assertIsNone(goal.category)
+
+    def test_goal_list_category_filter(self):
+        health = GoalCategory.objects.get(key="health_wellness")
+        mine = Goal.objects.create(user=self.user, title="Mine", category=health)
+        Goal.objects.create(user=self.user, title="Uncategorised")
+        Goal.objects.create(user=self.other, title="Theirs", category=health)
+
+        response = self.client.get(reverse("goal-list") + "?category=health_wellness")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([g["id"] for g in response.data], [mine.pk])
+
+        response = self.client.get(reverse("goal-list") + "?category=financial_life")
+        self.assertEqual(response.data, [])
+
+        response = self.client.get(reverse("goal-list") + "?category=bogus")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.assertEqual(len(self.client.get(reverse("goal-list")).data), 2)
+
+    def test_category_with_goals_cannot_be_deleted(self):
+        category = GoalCategory.objects.get(key="personal_life")
+        Goal.objects.create(user=self.user, title="G", category=category)
+        with self.assertRaises(ProtectedError):
+            category.delete()
+
+
+class GoalDeleteTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="del-owner", email="del@example.com", password="Strong-password-123!"
+        )
+        self.other = user_model.objects.create_user(
+            username="del-other", email="del2@example.com", password="Strong-password-123!"
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+        self.goal = Goal.objects.create(user=self.user, title="Mine")
+
+    def url(self, goal):
+        return reverse("goal-detail", args=[goal.pk])
+
+    def test_owner_can_delete_goal(self):
+        response = self.client.delete(self.url(self.goal))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Goal.objects.filter(pk=self.goal.pk).exists())
+
+    def test_delete_requires_authentication(self):
+        response = APIClient().delete(self.url(self.goal))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertTrue(Goal.objects.filter(pk=self.goal.pk).exists())
+
+    def test_cannot_delete_other_users_goal(self):
+        theirs = Goal.objects.create(user=self.other, title="Theirs")
+        response = self.client.delete(self.url(theirs))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(Goal.objects.filter(pk=theirs.pk).exists())
+
+    def test_delete_missing_goal_returns_404(self):
+        response = self.client.delete(reverse("goal-detail", args=[999999]))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_linked_tasks_are_kept_and_become_independent(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from tasks.models import Task
+
+        start = timezone.now()
+        task = Task.objects.create(
+            user=self.user,
+            title="T",
+            goal=self.goal,
+            scheduled_start=start,
+            scheduled_end=start + timedelta(hours=1),
+        )
+        self.client.delete(self.url(self.goal))
+        task.refresh_from_db()
+        self.assertIsNone(task.goal_id)

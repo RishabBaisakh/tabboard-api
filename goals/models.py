@@ -9,6 +9,22 @@ def validate_future_due_date(value):
         raise ValidationError("Due date must be after today.")
 
 
+class GoalCategory(models.Model):
+    key = models.SlugField(max_length=50, unique=True)
+    name = models.CharField(max_length=80)
+    description = models.TextField(blank=True, default="")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["id"]
+        verbose_name_plural = "goal categories"
+
+    def __str__(self):
+        return self.name
+
+
 class Goal(models.Model):
     class Timeline(models.TextChoices):
         SHORT_TERM = "short_term", "Short-term"
@@ -34,6 +50,13 @@ class Goal(models.Model):
         default=Timeline.SHORT_TERM,
     )
     motivation = models.TextField(blank=True, default="")
+    category = models.ForeignKey(
+        GoalCategory,
+        on_delete=models.PROTECT,
+        related_name="goals",
+        null=True,
+        blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
